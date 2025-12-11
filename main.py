@@ -2,8 +2,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from src.agent.graph import graph
 
-from langchain_core.messages import BaseMessage
-
 app = FastAPI()
 
 class ChatRequest(BaseModel):
@@ -13,21 +11,16 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     messages: list
 
-def serialize_message(msg: BaseMessage):
-    return {
-        "role": msg.type,
-        "content": msg.content
-    }
-
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
-        result = graph.invoke({"messages": request.messages})
+        # Maintain conversation per thread_id
+        result = graph.invoke({
+            "messages": request.messages,
+            "thread_id": request.thread_id
+        })
 
-        # Convert LangGraph messages to dicts
-        serialized = [serialize_message(m) for m in result["messages"]]
-
-        return ChatResponse(messages=serialized)
+        return ChatResponse(messages=result["messages"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
