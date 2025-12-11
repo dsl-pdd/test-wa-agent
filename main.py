@@ -13,13 +13,15 @@ class ChatResponse(BaseModel):
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
+    print("---- Incoming request ----")
+    print("Thread ID:", request.thread_id)
+    print("Messages:", request.messages)
+    print("--------------------------")
     try:
-        # Maintain conversation per thread_id
         result = graph.invoke({
             "messages": request.messages,
             "thread_id": request.thread_id
         })
-
         return ChatResponse(messages=result["messages"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
