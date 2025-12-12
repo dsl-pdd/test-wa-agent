@@ -2,19 +2,18 @@ from langgraph.checkpoint.memory import InMemorySaver
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from src.agent.graph import graph
-import uuid
 
 app = FastAPI()
 
 class ChatRequest(BaseModel):
     messages: list
-    thread_id: str | None = None
+    thread_id: str
 
 class ChatResponse(BaseModel):
-    messages: list
+    message:str
 
-# Initialize the saver
-saver = InMemorySaver()
+# === In-memory state store ===
+state_store: Dict[str, dict] = {}
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
@@ -23,16 +22,34 @@ async def chat(request: ChatRequest):
     print("Messages:", request.messages)
     print("--------------------------")
     try:
-        #thread_id = request.thread_id or f"whatsapp_{uuid.uuid4()}"
-        
-        # Graph invocation (async) with thread_id in config
-        result = graph.invoke(
-            {"messages": request.messages,
-            "thread_id": request.thread_id}
-        )
-        
-        return ChatResponse(messages=result.get("messages", []))
+        thread_id = request.thread_id
+        user_input = request.messages
 
+        # Initialize state if new
+        if thread_id not in state_store:
+            state_store[thread_id] = {"messages": []}
+
+        # Append user message
+        state_store[thread_id]["messages"].append(HumanMessage(content=user_input))
+
+        # Invoke graph
+        result = await graph.ainvoke(
+            state_store[thread_id],
+            config={"configurable": {"thread_id": thread_id}}
+        )
+
+        # 'result' is a dict: {"messages": [...]}
+        ai_messages = result.get("messages", [])
+
+        # Append AI messages to state store
+        state_store[thread_id]["messages"].extend([
+            AIMessage(content=m["content"]) for m in ai_messages
+        ])
+
+        # Return last AI message
+        last_reply = ai_messages[-1]["content"] if ai_messages else "No response generated."
+
+        return ChatResponse(response=last_reply)
     except Exception as e:
         print("Error in chat post:", e)
         raise HTTPException(status_code=500, detail=str(e))
