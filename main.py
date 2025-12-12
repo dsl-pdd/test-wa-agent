@@ -2,6 +2,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from src.agent.graph import graph
+from typing_extensions import Dict
 
 app = FastAPI()
 
