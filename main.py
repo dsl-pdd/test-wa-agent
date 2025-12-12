@@ -7,7 +7,7 @@ from typing_extensions import Dict
 app = FastAPI()
 
 class ChatRequest(BaseModel):
-    messages: list
+    messages: str
     thread_id: str
 
 class ChatResponse(BaseModel):
