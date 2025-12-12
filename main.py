@@ -23,27 +23,14 @@ async def chat(request: ChatRequest):
     print("Messages:", request.messages)
     print("--------------------------")
     try:
-        # 1. Use provided thread_id or generate a new one
-        thread_id = request.thread_id or str(uuid.uuid4())
-
-        # 2. Load previous messages from the saver
-        checkpoint = await saver.load(thread_id)
-        prior_messages = checkpoint.get("messages", []) if checkpoint else []
-
-        # 3. Combine prior messages with the new messages
-        all_messages = prior_messages + request.messages
-
-        # 4. Invoke the graph (async) with full conversation and thread_id
+        thread_id = request.thread_id or f"whatsapp_{uuid.uuid4()}"
+        
+        # Graph invocation (async) with thread_id in config
         result = await graph.ainvoke(
-            {"messages": all_messages},
+            {"messages": request.messages},
             config={"thread_id": thread_id}
         )
-
-        # 5. Append agent messages and save updated state
-        updated_messages = all_messages + result.get("messages", [])
-        await saver.save(thread_id, {"messages": updated_messages})
-
-        # 6. Return only the agent's new messages
+        
         return ChatResponse(messages=result.get("messages", []))
 
     except Exception as e:
