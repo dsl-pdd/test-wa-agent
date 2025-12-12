@@ -18,7 +18,12 @@ saver: CheckpointSaver = InMemorySaver()
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
+    print("---- Incoming request ----")
+    print("Thread ID:", request.thread_id)
+    print("Messages:", request.messages)
+    print("--------------------------")
     try:
+<<<<<<< HEAD
         # 2. Load existing state for this thread (or start fresh)
         thread_id = request.thread_id or str(uuid4())
         checkpoint = await saver.load(thread_id)  
@@ -32,6 +37,13 @@ async def chat(request: ChatRequest):
         # 5. Persist the updated state (including any new messages the agent produced)
         await saver.save(thread_id, {"messages": updated_messages})
         return ChatResponse(messages=result.get("messages", []))
+=======
+        result = graph.invoke({
+            "messages": request.messages,
+            "thread_id": request.thread_id
+        })
+        return ChatResponse(messages=result["messages"])
+>>>>>>> d87a95ebaca65c2082db2b2d3bfb28cb0a332298
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
