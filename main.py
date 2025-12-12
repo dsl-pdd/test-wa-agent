@@ -23,12 +23,12 @@ async def chat(request: ChatRequest):
     print("Messages:", request.messages)
     print("--------------------------")
     try:
-        thread_id = request.thread_id or f"whatsapp_{uuid.uuid4()}"
+        #thread_id = request.thread_id or f"whatsapp_{uuid.uuid4()}"
         
         # Graph invocation (async) with thread_id in config
-        result = await graph.ainvoke(
-            {"messages": request.messages},
-            config={"thread_id": thread_id}
+        result = graph.invoke(
+            {"messages": request.messages,
+            "thread_id": request.thread_id}
         )
         
         return ChatResponse(messages=result.get("messages", []))
