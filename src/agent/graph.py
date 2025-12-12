@@ -6,13 +6,23 @@ saver = InMemorySaver()
 
 async def chat_with_checkpoint(state: MessagesState, thread_id: str | None = None):
     thread_id = thread_id or str(uuid.uuid4())
-    checkpoint = await saver.load(thread_id)
-    prior_messages = checkpoint.get("messages", []) if checkpoint else []
-    all_messages = prior_messages + state["messages"]
-    response = llm.invoke(all_messages)
-    updated_messages = all_messages + [response]
-    await saver.save(thread_id, {"messages": updated_messages})
-    return {"messages": [response]}
+    try:
+        checkpoint = await saver.load(thread_id)
+        prior_messages = checkpoint.get("messages", []) if checkpoint else []
+        all_messages = prior_messages + state["messages"]
+        
+        # Ensure messages are strings for the LLM
+        all_messages_text = [m["content"] for m in all_messages]
+        response = llm.invoke(all_messages_text)
+        
+        message_obj = {"role": "assistant", "content": response}
+        updated_messages = all_messages + [message_obj]
+        await saver.save(thread_id, {"messages": updated_messages})
+        return {"messages": [message_obj]}
+    except Exception as e:
+        print("Error in chat node:", e)
+        raise
+
 
 builder = StateGraph(MessagesState)
 builder.add_node("chat", chat_with_checkpoint)
