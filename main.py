@@ -1,5 +1,4 @@
 from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.checkpoint.base import CheckpointSaver
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from src.agent.graph import graph
@@ -15,7 +14,7 @@ class ChatResponse(BaseModel):
     messages: list
 
 # Initialize the saver
-saver: CheckpointSaver = InMemorySaver()
+saver = InMemorySaver()
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
