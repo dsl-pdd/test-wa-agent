@@ -1,8 +1,7 @@
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from src.agent.graph import graph
-from typing_extensions import Dict
 
 app = FastAPI()
 
@@ -12,9 +11,6 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     message: str
-
-# === In-memory state store ===
-state_store: Dict[str, dict] = {}
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
@@ -26,33 +22,23 @@ async def chat(request: ChatRequest):
         thread_id = request.thread_id
         user_input = request.messages
 
-        # Initialize state if new
-        if thread_id not in state_store:
-            state_store[thread_id] = {"messages": []}
+        # Create the input state with the new user message
+        input_state = {
+            "messages": [HumanMessage(content=user_input)]
+        }
 
-        # Append user message
-        state_store[thread_id]["messages"].append(HumanMessage(content=user_input))
-
-        # Invoke graph
+        # Invoke graph with checkpointer - it will load previous state and save new state
         result = await graph.ainvoke(
-            state_store[thread_id],
+            input_state,
             config={"configurable": {"thread_id": thread_id}}
         )
 
-        # 'result' is a dict: {"messages": [...]}
+        # Extract AI response
         ai_messages = result.get("messages", [])
-
-        # Append AI messages to state store
-        for m in ai_messages:
-            if isinstance(m, dict):
-                state_store[thread_id]["messages"].append(AIMessage(content=m["content"]))
-            else:
-                state_store[thread_id]["messages"].append(m)
-
-        # Return last AI message
+        
         if ai_messages:
             last_msg = ai_messages[-1]
-            last_reply = last_msg["content"] if isinstance(last_msg, dict) else last_msg.content
+            last_reply = last_msg.content if hasattr(last_msg, 'content') else str(last_msg)
         else:
             last_reply = "No response generated."
 

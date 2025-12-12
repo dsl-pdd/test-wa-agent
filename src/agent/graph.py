@@ -15,27 +15,16 @@ llm = ChatGroq(model="llama-3.1-8b-instant")
 
 def chat_with_checkpoint(state: MessagesState, *, config):
     try:
-        all_messages = state["messages"]  # messages list
+        all_messages = state["messages"]
         thread_id = config.get("configurable", {}).get("thread_id")
         print("Chat node thread_id:", thread_id)
+        print("Current message count:", len(all_messages))
 
-        # Extract content for LLM
-        inputs = [m.content if hasattr(m, 'content') else m["content"] for m in all_messages]
+        # Call LLM with all messages
+        response = llm.invoke(all_messages)
 
-        # Call LLM
-        response = llm.invoke(inputs)
-
-        # Serialize response
-        if isinstance(response, list):
-            serialized = [serialize_message(m) for m in response]
-        else:
-            serialized = [serialize_message(response)]
-
-        # Save messages in checkpoint per thread
-        if thread_id:
-            saver.save(thread_id, {"messages": all_messages + serialized})
-
-        return {"messages": serialized}
+        # Return the response - checkpointer will handle persistence automatically
+        return {"messages": [response]}
 
     except Exception as e:
         print("Error in chat node:", e)
