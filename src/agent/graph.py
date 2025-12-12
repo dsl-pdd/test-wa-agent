@@ -1,25 +1,36 @@
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph, START, END, MessagesState
+from langchain_groq import ChatGroq
 import uuid
 
 saver = InMemorySaver()
+llm = ChatGroq(model="llama-3.1-8b-instant")
 
-async def chat_with_checkpoint(state: MessagesState, thread_id: str | None = None):
-    thread_id = thread_id or str(uuid.uuid4())
+def chat_with_checkpoint(state: MessagesState, *, config):
     try:
+        # Graph automatically injects the entire conversation state
         all_messages = state["messages"]
 
-        # Call your LLM
-        response = llm.invoke([m["content"] for m in all_messages])
+        # Extract raw text for the LLM
+        inputs = [m["content"] for m in all_messages]
 
-        # Wrap response
-        message_obj = {"role": "assistant", "content": response}
+        # Call LLM (sync model)
+        response = llm.invoke(inputs)
 
-        # Return new messages only; the graph + saver handle persistence
+        # Standard assistant message format
+        message_obj = {
+            "role": "assistant",
+            "content": response
+        }
+
+        # Return ONLY new messages.
+        # Graph + saver will append this and persist automatically.
         return {"messages": [message_obj]}
+
     except Exception as e:
         print("Error in chat node:", e)
         raise
+
 
 
 builder = StateGraph(MessagesState)
