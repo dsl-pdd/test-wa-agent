@@ -1,4 +1,4 @@
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from src.agent.graph import graph
@@ -11,7 +11,7 @@ class ChatRequest(BaseModel):
     thread_id: str
 
 class ChatResponse(BaseModel):
-    message:str
+    message: str
 
 # === In-memory state store ===
 state_store: Dict[str, dict] = {}
@@ -43,14 +43,20 @@ async def chat(request: ChatRequest):
         ai_messages = result.get("messages", [])
 
         # Append AI messages to state store
-        state_store[thread_id]["messages"].extend([
-            AIMessage(content=m["content"]) for m in ai_messages
-        ])
+        for m in ai_messages:
+            if isinstance(m, dict):
+                state_store[thread_id]["messages"].append(AIMessage(content=m["content"]))
+            else:
+                state_store[thread_id]["messages"].append(m)
 
         # Return last AI message
-        last_reply = ai_messages[-1]["content"] if ai_messages else "No response generated."
+        if ai_messages:
+            last_msg = ai_messages[-1]
+            last_reply = last_msg["content"] if isinstance(last_msg, dict) else last_msg.content
+        else:
+            last_reply = "No response generated."
 
-        return ChatResponse(response=last_reply)
+        return ChatResponse(message=last_reply)
     except Exception as e:
         print("Error in chat post:", e)
         raise HTTPException(status_code=500, detail=str(e))

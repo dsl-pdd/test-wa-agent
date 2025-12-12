@@ -15,12 +15,12 @@ llm = ChatGroq(model="llama-3.1-8b-instant")
 
 def chat_with_checkpoint(state: MessagesState, *, config):
     try:
-        all_messages = state.messages  # messages list
-        thread_id = getattr(state, "thread_id", None)
+        all_messages = state["messages"]  # messages list
+        thread_id = config.get("configurable", {}).get("thread_id")
         print("Chat node thread_id:", thread_id)
 
         # Extract content for LLM
-        inputs = [m["content"] for m in all_messages]
+        inputs = [m.content if hasattr(m, 'content') else m["content"] for m in all_messages]
 
         # Call LLM
         response = llm.invoke(inputs)
