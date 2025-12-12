@@ -1,12 +1,29 @@
 from langgraph.graph import StateGraph, START, END, MessagesState
 from langchain_groq import ChatGroq
+from langgraph.checkpoint import InMemorySaver
+from langgraph.checkpoint.base import CheckpointSaver
+import uuid
 
 # Initialize Groq LLM
 llm = ChatGroq(model="llama-3.1-8b-instant")
 
+#for memory
+saver: Checkpointer = InMemorySaver()
+
 # Simple chat node
-def chat(state: MessagesState):
-    response = llm.invoke(state["messages"])
+# def chat(state: MessagesState):
+#     response = llm.invoke(state["messages"])
+#     return {"messages": [response]}
+
+#Chat node with checkpointer integration
+async def chat_with_checkpoint(state: MessagesState, thread_id: str | None = None):
+    thread_id = thread_id or str(uuid.uuid4())
+    checkpoint = await saver.load(thread_id)
+    prior_messages = checkpoint.get("messages", []) if checkpoint else []
+    all_messages = prior_messages + state["messages"]
+    response = llm.invoke(all_messages)
+    updated_messages = all_messages + [response]
+    await saver.save(thread_id, {"messages": updated_messages})
     return {"messages": [response]}
 
 # Build graph
