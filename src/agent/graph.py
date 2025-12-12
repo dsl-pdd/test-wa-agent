@@ -21,7 +21,7 @@ async def chat_with_checkpoint(state: MessagesState, thread_id: str | None = Non
         return {"messages": [message_obj]}
     except Exception as e:
         print("Error in chat node:", e)
-        raise
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 builder = StateGraph(MessagesState)

@@ -47,6 +47,7 @@ async def chat(request: ChatRequest):
         return ChatResponse(messages=result.get("messages", []))
 
     except Exception as e:
+        print("Error in chat post:", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
